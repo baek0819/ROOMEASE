@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacific Star Resort Spa - Kitchen Order Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #2D3748; /* Darker background for kitchen display */
+            color: #E2E8F0; /* Light text color */
+        }
+        .order-card {
+            background-color: #4A5568; /* Slightly lighter dark for cards */
+            border-radius: 0.75rem; /* Rounded corners */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease-in-out;
+        }
+        .order-card.status-accepted {
+            border-left: 8px solid #38B2AC; /* Teal-500 */
+        }
+        .order-card.status-preparing {
+            border-left: 8px solid #ECC94B; /* Yellow-500 */
+        }
+        .order-card.status-ready {
+            border-left: 8px solid #68D391; /* Green-500 */
+        }
+        .order-card.status-served {
+            border-left: 8px solid #90CDF4; /* Blue-300 (lighter for served) */
+            opacity: 0.7; /* Slightly faded for served orders */
+        }
+        .order-card:hover {
+            transform: translateY(-3px);
+        }
+        .custom-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: transparent;
+        }
+        .filter-btn {
+            background-color: #6B7280; /* Gray-500 */
+            color: white;
+        }
+        .filter-btn.active {
+            background-color: #ECC94B; /* Yellow-500 */
+            font-weight: bold;
+            color: #2D3748;
+        }
+        /* Custom styles for modals */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.75);
+        }
+        .modal-content {
+            background-color: #4A5568;
+            color: #E2E8F0;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+    <!-- Header -->
+    <header class="bg-[#2D3748] shadow-md py-4 px-6 flex justify-between items-center z-10">
+        <h1 class="text-3xl font-bold text-amber-500">Pacific Star Resort Spa</h1>
+        <div class="text-xl font-semibold">주방 주문 관리 시스템</div>
+        <div class="flex items-center space-x-4">
+            <button id="generate-sample-orders-button" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition shadow-lg">
+                <i class="fa-solid fa-plus-circle mr-2"></i>샘플 주문 생성
+            </button>
+            <div id="kitchen-id" class="text-sm text-gray-400">키친 ID: <span class="font-mono text-gray-200">DEMO_MODE</span></div>
+        </div>
+    </header>
+
+    <!-- Filter and Main Content Area -->
+    <div class="flex flex-grow overflow-hidden">
+        <!-- Order Filters -->
+        <aside class="w-1/5 bg-[#364253] p-6 border-r border-gray-700 flex flex-col">
+            <h2 class="text-2xl font-bold mb-6 text-amber-300">주문 상태 필터</h2>
+            <div id="status-filters" class="flex flex-col space-y-4">
+                <button class="filter-btn py-3 px-4 rounded-lg text-lg hover:bg-gray-600 transition active" data-status="all">모든 주문</button>
+                <button class="filter-btn py-3 px-4 rounded-lg text-lg hover:bg-gray-600 transition" data-status="accepted">접수 (새 주문)</button>
+                <button class="filter-btn py-3 px-4 rounded-lg text-lg hover:bg-gray-600 transition" data-status="preparing">준비중</button>
+                <button class="filter-btn py-3 px-4 rounded-lg text-lg hover:bg-gray-600 transition" data-status="ready">준비완료</button>
+                <button class="filter-btn py-3 px-4 rounded-lg text-lg hover:bg-gray-600 transition" data-status="served">룸서비스 완료</button>
+            </div>
+        </aside>
+
+        <!-- Main Order Display Area -->
+        <main class="flex-grow p-6 overflow-y-auto custom-scrollbar">
+            <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-min">
+                <!-- Orders will be dynamically inserted here -->
+                <p id="no-orders-message" class="col-span-full text-center text-gray-400 text-xl hidden">현재 표시할 주문이 없습니다.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Order Detail Modal -->
+    <div id="detail-modal" class="fixed inset-0 hidden items-center justify-center modal-overlay z-50">
+        <div class="modal-content rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b border-gray-700">
+                <h2 class="text-3xl font-bold text-amber-500">주문 상세</h2>
+                <button id="close-detail-modal" class="text-gray-400 hover:text-gray-200 transition">
+                    <i class="fa-solid fa-times fa-xl"></i>
+                </button>
+            </div>
+            <div id="modal-body" class="flex-grow p-6 overflow-y-auto custom-scrollbar">
+                <!-- Order details will be inserted here by JS -->
+            </div>
+            <div class="p-6 border-t border-gray-700 flex justify-end space-x-3">
+                <button id="update-status-button" class="bg-amber-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-amber-700 transition shadow-lg disabled:bg-gray-500">
+                    상태 업데이트
+                </button>
+                <button id="archive-order-button" class="bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition shadow-lg disabled:bg-gray-500">
+                    주문 보관
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Message/Confirmation Modal -->
+    <div id="custom-message-modal" class="fixed inset-0 hidden items-center justify-center modal-overlay z-[100]">
+        <div class="modal-content rounded-lg shadow-2xl w-full max-w-sm p-6 text-center">
+            <p id="custom-message-text" class="text-lg mb-4"></p>
+            <div class="flex justify-center space-x-4">
+                <button id="custom-message-ok-button" class="bg-amber-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-700 transition shadow-lg">확인</button>
+                <button id="custom-message-cancel-button" class="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 transition shadow-lg hidden">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        let activeFilter = 'all'; // Default filter
+
+        const ordersGrid = document.getElementById('orders-grid');
+        const statusFilters = document.getElementById('status-filters');
+        const detailModal = document.getElementById('detail-modal');
+        const closeDetailModalButton = document.getElementById('close-detail-modal');
+        const modalBody = document.getElementById('modal-body');
+        const updateStatusButton = document.getElementById('update-status-button');
+        const archiveOrderButton = document.getElementById('archive-order-button');
+        const noOrdersMessage = document.getElementById('no-orders-message');
+        const generateSampleOrdersButton = document.getElementById('generate-sample-orders-button'); 
+
+        // Custom Message Modal Elements
+        const customMessageModal = document.getElementById('custom-message-modal');
+        const customMessageText = document.getElementById('custom-message-text');
+        const customMessageOkButton = document.getElementById('custom-message-ok-button');
+        const customMessageCancelButton = document.getElementById('custom-message-cancel-button');
+
+        let resolveCustomMessagePromise;
+
+        /**
+         * Shows a custom message or confirmation modal.
+         * @param {string} message The message to display.
+         * @param {string} type 'alert' for a simple message, 'confirm' for a confirmation.
+         * @returns {Promise<boolean>} Resolves to true for OK/Yes, false for Cancel/No.
+         */
+        function showCustomMessage(message, type = 'alert') {
+            return new Promise(resolve => {
+                resolveCustomMessagePromise = resolve;
+                customMessageText.textContent = message;
+
+                customMessageOkButton.onclick = () => {
+                    customMessageModal.classList.add('hidden');
+                    resolveCustomMessagePromise(true);
+                };
+
+                if (type === 'confirm') {
+                    customMessageCancelButton.classList.remove('hidden');
+                    customMessageCancelButton.onclick = () => {
+                        customMessageModal.classList.add('hidden');
+                        resolveCustomMessagePromise(false);
+                    };
+                } else {
+                    customMessageCancelButton.classList.add('hidden');
+                }
+                customMessageModal.classList.remove('hidden');
+            });
+        }
+
+
+        let currentOrders = [];
+        let selectedOrder = null;
+
+        const STATUS_MAP = {
+            'accepted': '접수',
+            'preparing': '준비중',
+            'ready': '준비완료',
+            'served': '룸서비스 완료'
+        };
+
+        const NEXT_STATUS = {
+            'accepted': 'preparing',
+            'preparing': 'ready',
+            'ready': 'served',
+            'served': 'served' 
+        };
+
+        function renderOrders() {
+            ordersGrid.innerHTML = ''; 
+            noOrdersMessage.classList.add('hidden'); 
+
+            const filteredOrders = activeFilter === 'all'
+                ? currentOrders
+                : currentOrders.filter(order => order.status === activeFilter);
+
+            if (filteredOrders.length === 0) {
+                noOrdersMessage.classList.remove('hidden');
+            } else {
+                filteredOrders.forEach(order => {
+                    const orderCard = document.createElement('div');
+                    orderCard.className = `order-card p-4 lg:p-6 text-sm lg:text-base cursor-pointer transform hover:scale-[1.01] transition-all duration-200 ease-in-out flex flex-col justify-between ${'status-' + order.status}`;
+                    orderCard.dataset.orderId = order.id;
+
+                    const orderTime = order.timestamp ? new Date(order.timestamp).toLocaleString() : 'N/A'; // Adjusted for local timestamp
+
+                    orderCard.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xl lg:text-2xl font-bold text-amber-300">#${order.roomNumber || 'N/A'}</h3>
+                            <span class="text-md lg:text-lg font-semibold text-gray-300">${STATUS_MAP[order.status]}</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mb-2">주문 시간: ${orderTime}</p>
+                        <ul class="list-disc list-inside mb-4 flex-grow text-gray-200">
+                            ${order.items.map(item => `
+                                <li class="${item.specialRequests ? 'text-orange-300' : ''}">${item.name} x ${item.quantity}</li>
+                            `).join('')}
+                        </ul>
+                        <div class="text-sm font-medium text-gray-300 mt-auto pt-2 border-t border-gray-600">
+                            총액: ${order.total}
+                        </div>
+                    `;
+                    ordersGrid.appendChild(orderCard);
+                });
+            }
+        }
+
+        function openDetailModal(orderId) {
+            selectedOrder = currentOrders.find(o => o.id === orderId);
+            if (!selectedOrder) return;
+
+            const orderTime = selectedOrder.timestamp ? new Date(selectedOrder.timestamp).toLocaleString() : 'N/A'; // Adjusted for local timestamp
+
+            modalBody.innerHTML = `
+                <div class="mb-6">
+                    <p class="text-xl font-bold mb-2">객실 번호: <span class="text-amber-300">${selectedOrder.roomNumber || 'N/A'}</span></p>
+                    <p class="text-lg text-gray-300">주문 ID: <span class="font-mono">${selectedOrder.id}</span></p>
+                    <p class="text-lg text-gray-300">주문 시간: ${orderTime}</p>
+                    <p class="text-lg text-gray-300">현재 상태: <span class="font-bold text-amber-300">${STATUS_MAP[selectedOrder.status]}</span></p>
+                </div>
+                <div class="mb-6">
+                    <h4 class="text-xl font-semibold text-amber-300 mb-3">주문 항목:</h4>
+                    <ul class="space-y-3">
+                        ${selectedOrder.items.map(item => `
+                            <li class="bg-[#364253] p-4 rounded-lg shadow-inner flex items-center justify-between">
+                                <div>
+                                    <p class="text-lg font-bold">${item.name} <span class="text-gray-400 text-base">x ${item.quantity}</span></p>
+                                    ${item.specialRequests ? `<p class="text-sm text-orange-300 mt-1">특별 요청: ${item.specialRequests}</p>` : ''}
+                                </div>
+                                <span class="text-lg font-semibold">${item.price.toLocaleString()}원</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                <div class="text-right text-2xl font-bold mt-6 pt-4 border-t border-gray-700">
+                    총액: <span class="text-amber-400">${selectedOrder.total}</span>
+                </div>
+            `;
+
+            updateStatusButton.disabled = selectedOrder.status === 'served';
+            updateStatusButton.textContent = `상태를 '${STATUS_MAP[NEXT_STATUS[selectedOrder.status]]}'로 변경`;
+            archiveOrderButton.disabled = selectedOrder.status !== 'served'; 
+
+            detailModal.classList.remove('hidden');
+            setTimeout(() => detailModal.classList.add('opacity-100'), 10);
+        }
+
+        function closeDetailModal() {
+            detailModal.classList.remove('opacity-100');
+            setTimeout(() => {
+                detailModal.classList.add('hidden');
+                modalBody.innerHTML = '';
+                selectedOrder = null;
+            }, 300);
+        }
+
+        async function updateOrderStatus() {
+            if (!selectedOrder) {
+                await showCustomMessage("선택된 주문이 없습니다.", 'alert');
+                return;
+            }
+
+            const nextStatus = NEXT_STATUS[selectedOrder.status];
+            if (!nextStatus || selectedOrder.status === 'served') return; 
+
+            // Update status in local array
+            const orderIndex = currentOrders.findIndex(order => order.id === selectedOrder.id);
+            if (orderIndex > -1) {
+                currentOrders[orderIndex].status = nextStatus;
+                currentOrders[orderIndex].lastUpdated = new Date().getTime(); // Local timestamp
+                selectedOrder.status = nextStatus; // Update selected order for modal context
+                renderOrders(); 
+                closeDetailModal(); 
+                await showCustomMessage(`주문 #${selectedOrder.roomNumber}의 상태가 '${STATUS_MAP[nextStatus]}'으로 업데이트되었습니다.`, 'alert');
+            } else {
+                await showCustomMessage("주문을 찾을 수 없습니다.", 'alert');
+            }
+        }
+
+        async function archiveOrder() {
+            if (!selectedOrder) {
+                await showCustomMessage("선택된 주문이 없습니다.", 'alert');
+                return;
+            }
+
+            const confirmation = await showCustomMessage("이 주문을 보관하시겠습니까? 보관된 주문은 더 이상 이 목록에 표시되지 않습니다.", 'confirm');
+            if (!confirmation) {
+                return;
+            }
+
+            // Remove order from active orders
+            const initialLength = currentOrders.length;
+            currentOrders = currentOrders.filter(order => order.id !== selectedOrder.id);
+            
+            if (currentOrders.length < initialLength) {
+                renderOrders();
+                closeDetailModal();
+                await showCustomMessage("주문이 성공적으로 보관되었습니다. (브라우저 새로고침 시 사라집니다)", 'alert');
+            } else {
+                await showCustomMessage("주문을 보관하는 데 실패했습니다.", 'alert');
+            }
+        }
+
+        function listenForOrders() {
+            // In a client-side only app, this simulates initial data loading
+            // and subsequent changes from "external" sources (e.g., sample data generation)
+            renderOrders(); // Initial render of any existing data (empty initially)
+            // No real-time listener needed as there's no backend
+        }
+
+        const sampleMenuData = [
+            { name: '클래식 비프 버거', price: 28000 },
+            { name: '트러플 크림 파스타', price: 32000 },
+            { name: '마르게리타 피자', price: 25000 },
+            { name: '시저 샐러드', price: 18000 },
+            { name: '오늘의 스프', price: 12000 },
+            { name: '아메리카노', price: 8000 },
+            { name: '생과일 오렌지 주스', price: 12000 },
+            { name: '콜라', price: 5000 },
+            { name: '감자튀김 추가', price: 7000 },
+            { name: '뉴욕 치즈케이크', price: 15000 },
+            { name: '계절 과일 플래터', price: 22000 },
+        ];
+
+        async function generateSampleOrders() {
+            console.log("Generating sample orders...");
+            const statuses = ['accepted', 'preparing', 'ready', 'served'];
+            const numberOfOrdersPerStatus = 2; 
+            let generatedCount = 0;
+
+            for (let s = 0; s < statuses.length; s++) {
+                const status = statuses[s];
+                for (let i = 0; i < numberOfOrdersPerStatus; i++) {
+                    const roomNumber = Math.floor(Math.random() * 200) + 1000; 
+                    const numItems = Math.floor(Math.random() * 3) + 1; 
+                    const orderItems = [];
+                    let totalOrderPrice = 0;
+
+                    for (let j = 0; j < numItems; j++) {
+                        const randomMenuItem = sampleMenuData[Math.floor(Math.random() * sampleMenuData.length)];
+                        const quantity = Math.floor(Math.random() * 2) + 1; 
+                        const specialRequests = Math.random() > 0.7 ? "알레르기: 땅콩" : ""; 
+
+                        orderItems.push({
+                            name: randomMenuItem.name,
+                            quantity: quantity,
+                            price: randomMenuItem.price,
+                            specialRequests: specialRequests
+                        });
+                        totalOrderPrice += randomMenuItem.price * quantity;
+                    }
+
+                    const newOrder = {
+                        id: crypto.randomUUID(), // Generate a unique ID locally
+                        roomNumber: roomNumber.toString(),
+                        items: orderItems,
+                        total: totalOrderPrice.toLocaleString() + '원',
+                        timestamp: new Date().getTime(), // Local timestamp
+                        status: status,
+                        lastUpdated: new Date().getTime() // Local timestamp
+                    };
+
+                    currentOrders.push(newOrder); // Add to local array
+                    generatedCount++;
+                }
+            }
+            // Sort by timestamp in descending order in memory after generating
+            currentOrders.sort((a, b) => b.timestamp - a.timestamp);
+            renderOrders(); // Re-render the grid
+            await showCustomMessage(`총 ${generatedCount}개의 샘플 주문이 생성되었습니다. (브라우저 새로고침 시 사라집니다)`, 'alert');
+        }
+
+        function setupEventListeners() {
+            statusFilters.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (button) {
+                    statusFilters.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    activeFilter = button.dataset.status;
+                    renderOrders();
+                }
+            });
+
+            ordersGrid.addEventListener('click', (e) => {
+                const card = e.target.closest('.order-card');
+                if (card) {
+                    openDetailModal(card.dataset.orderId);
+                }
+            });
+
+            closeDetailModalButton.addEventListener('click', closeDetailModal);
+            detailModal.addEventListener('click', (e) => {
+                if (e.target === detailModal) {
+                    closeDetailModal();
+                }
+            });
+
+            updateStatusButton.addEventListener('click', updateOrderStatus);
+            archiveOrderButton.addEventListener('click', archiveOrder);
+            generateSampleOrdersButton.addEventListener('click', generateSampleOrders); 
+        }
+
+        // Initialize the app when the DOM is ready
+        document.addEventListener('DOMContentLoaded', setupEventListeners);
+        document.addEventListener('DOMContentLoaded', listenForOrders); // Initial render of orders (will be empty)
+    </script>
+</body>
+</html>
