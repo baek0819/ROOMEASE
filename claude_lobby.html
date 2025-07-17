@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royal Hotel Lobby - Management Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #d4af37 0%, #f4e4a6 50%, #d4af37 100%);
+            color: #1a1a1a;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .date-time {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-stat {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 15px;
+            border-radius: 20px;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .stat-number {
+            font-size: 1.4em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .card h2 {
+            color: #d4af37;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 25px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .tab-btn:hover,
+        .tab-btn.active {
+            background: linear-gradient(90deg, #d4af37 0%, #f4e4a6 100%);
+            color: #1a1a1a;
+            transform: translateY(-2px);
+        }
+
+        .room-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .room-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .room-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+        }
+
+        .room-number {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #d4af37;
+            margin-bottom: 10px;
+        }
+
+        .room-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .status-occupied { background: #e74c3c; color: white; }
+        .status-checkout { background: #f39c12; color: white; }
+        .status-available { background: #27ae60; color: white; }
+        .status-maintenance { background: #95a5a6; color: white; }
+
+        .room-orders {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+        .order-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+            animation: pulse 2s infinite;
+        }
+
+        .order-summary {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--order-color);
+        }
+
+        .order-summary.food { --order-color: #3498db; }
+        .order-summary.service { --order-color: #9b59b6; }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .order-id {
+            font-weight: bold;
+            color: #d4af37;
+        }
+
+        .order-time {
+            color: #999;
+            font-size: 0.8em;
+        }
+
+        .order-details {
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        .order-status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
+        .badge-pending { background: #ff6b35; color: white; }
+        .badge-preparing { background: #f39c12; color: white; }
+        .badge-serving { background: #3498db; color: white; }
+        .badge-completed { background: #27ae60; color: white; }
+
+        .service-request {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #9b59b6;
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .service-room {
+            font-weight: bold;
+            color: #d4af37;
+        }
+
+        .service-time {
+            color: #999;
+            font-size: 0.8em;
+        }
+
+        .service-description {
+            color: #ccc;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .service-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-complete {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+        }
+
+        .btn-assign {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .checkout-summary {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .checkout-room {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #d4af37;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .bill-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bill-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            color: #d4af37;
+            font-size: 1.1em;
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #d4af37;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #ccc;
+            margin-top: 5px;
+        }
+
+        .notification-panel {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--notif-color);
+        }
+
+        .notification-item.urgent { --notif-color: #e74c3c; }
+        .notification-item.info { --notif-color: #3498db; }
+        .notification-item.success { --notif-color: #27ae60; }
+
+        .notif-time {
+            font-size: 0.7em;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .notif-message {
+            color: #fff;
+            line-height: 1.3;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .search-bar::placeholder {
+            color: #999;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .room-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            
+            .quick-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👑 ROYAL HOTEL LOBBY</h1>
+        <div class="header-controls">
+            <div class="date-time" id="current-time">
+                <!-- Current time will be displayed here -->
+            </div>
+            <div class="header-stats">
+                <div class="header-stat">
+                    <span class="stat-number" id="total-guests">24</span>
+                    <span class="stat-label">Guests</span>
+                </div>
+                <div class="header-stat">
+                    <span class="stat-number" id="active-orders">8</span>
+                    <span class="stat-label">Orders</span>
+                </div>
+                <div class="header-stat">
+                    <span class="stat-number" id="pending-requests">3</span>
+                    <span class="stat-label">Requests</span>
+                </div>
+                <div class="header-stat">
+                    <span class="stat-number" id="checkout-rooms">2</span>
+                    <span class="stat-label">Checkout</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="main-content">
+            <!-- Room Status Overview -->
+            <div class="card">
+                <h2>🏨 Room Status Overview</h2>
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="all">All Rooms</button>
+                    <button class="tab-btn" data-tab="occupied">Occupied</button>
+                    <button class="tab-btn" data-tab="checkout">Checkout</button>
+                    <button class="tab-btn" data-tab="available">Available</button>
+                </div>
+                <input type="text" class="search-bar" placeholder="Search room number..." id="room-search">
+                <div class="room-grid" id="room-grid">
+                    <!-- Room cards will be generated here -->
+                </div>
+            </div>
+
+            <!-- Orders Overview -->
+            <div class="card">
+                <h2>📋 Recent Orders & Service Requests</h2>
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="recent">Recent Orders</button>
+                    <button class="tab-btn" data-tab="services">Service Requests</button>
+                </div>
+                <div id="orders-content">
+                    <!-- Orders content will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <!-- Quick Statistics -->
+            <div class="card">
+                <h2>📊 Today's Statistics</h2>
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <span class="stat-value">₩2.4M</span>
+                        <div class="stat-label">Revenue</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">156</span>
+                        <div class="stat-label">Orders</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">89%</span>
+                        <div class="stat-label">Occupancy</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">4.8</span>
+                        <div class="stat-label">Rating</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Checkout Summary -->
+            <div class="card">
+                <h2>💳 Checkout Summary</h2>
+                <div id="checkout-content">
+                    <div class="checkout-summary">
+                        <div class="checkout-room">Room 1205</div>
+                        <div class="bill-item">
+                            <span>Room Service</span>
+                            <span>₩235,000</span>
+                        </div>
+                        <div class="bill-item">
+                            <span>Beverages</span>
+                            <span>₩145,000</span>
+                        </div>
+                        <div class="bill-item">
+                            <span>Service Charge (10%)</span>
+                            <span>₩38,000</span>
+                        </div>
+                        <div class="bill-item">
+                            <span>Total Amount</span>
+                            <span>₩418,000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications -->
+            <div class="card">
+                <h2>🔔 Live Notifications</h2>
+                <div class="notification-panel" id="notifications">
+                    <!-- Notifications will be added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let rooms = [];
+        let orders = [];
+        let serviceRequests = [];
+        let notifications = [];
+        let currentRoomTab = 'all';
+        let currentOrderTab = 'recent';
+
+        // Sample data
+        const sampleRooms = [
+            { number: '1205', status: 'occupied', guest: 'Kim Min-jun', orders: 3, checkIn: '2025-07-14', hasActiveOrders: true },
+            { number: '0815', status: 'occupied', guest: 'Park So-young', orders: 1, checkIn: '2025-07-13', hasActiveOrders: true },
+            { number: '2110', status: 'checkout', guest: 'Lee Dong-wook', orders: 2, checkIn: '2025-07-12', hasActiveOrders: false },
+            { number: '1087', status: 'available', guest: '', orders: 0, checkIn: '', hasActiveOrders: false },
+            { number: '1456', status: 'occupied', guest: 'Choi Ji-hye', orders: 0, checkIn: '2025-07-14', hasActiveOrders: false },
+            { number: '0923', status: 'maintenance', guest: '', orders: 0, checkIn: '', hasActiveOrders: false },
+            { number: '1834', status: 'checkout', guest: 'Jung Woo-sung', orders: 1, checkIn: '2025-07-13', hasActiveOrders: false },
+            { number: '0612', status: 'available', guest: '', orders: 0, checkIn: '', hasActiveOrders: false }
+        ];
+
+        const sampleOrders = [
+            {
+                id: 1001,
+                room: '1205',
+                type: 'food',
+                items: ['Wagyu Beef Steak', 'Truffle Risotto'],
+                total: 130000,
+                status: 'preparing',
+                time: new Date(Date.now() - 15 * 60000)
+            },
+            {
+                id: 1002,
+                room: '0815',
+                type: 'food',
+                items: ['Lobster Thermidor (×2)'],
+                total: 150000,
+                status: 'serving',
+                time: new Date(Date.now() - 30 * 60000)
+            },
+            {
+                id: 1003,
+                room: '2110',
+                type: 'food',
+                items: ['Dom Pérignon', 'Premium Coffee (×2)'],
+                total: 170000,
+                status: 'completed',
+                time: new Date(Date.now() - 60 * 60000)
+            }
+        ];
+
+        const sampleServiceRequests = [
+            {
+                id: 2001,
+                room: '1205',
+                description: 'Additional towels needed',
+                status: 'pending',
+                time: new Date(Date.now() - 10 * 60000),
+                assignedTo: ''
+            },
+            {
+                id: 2002,
+                room: '0815',
+                description: 'Room cleaning service - extra attention to bathroom',
+                status: 'assigned',
+                time: new Date(Date.now() - 25 * 60000),
+                assignedTo: 'Housekeeping Team A'
+            },
+            {
+                id: 2003,
+                room: '1456',
+                description: 'Ice bucket delivery',
+                status: 'pending',
+                time: new Date(Date.now() - 5 * 60000),
+                assignedTo: ''
+            }
+        ];
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            rooms = [...sampleRooms];
+            orders = [...sampleOrders];
+            serviceRequests = [...sampleServiceRequests];
+            
+            updateCurrentTime();
+            renderRooms();
+            renderOrdersContent('recent');
+            setupEventListeners();
+            addSampleNotifications();
+            
+            // Update time every minute
+            setInterval(updateCurrentTime, 60000);
+            
+            // Simulate real-time updates
+            setInterval(simulateUpdates, 30000);
+        });
+
+        function setupEventListeners() {
+            // Room tab buttons
+            document.querySelectorAll('[data-tab]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabType = this.closest('.tab-buttons').previousElementSibling.textContent.includes('Room') ? 'room' : 'order';
+                    const siblings = this.parentNode.querySelectorAll('.tab-btn');
+                    siblings.forEach(s => s.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const tab = this.getAttribute('data-tab');
+                    if (tabType === 'room') {
+                        currentRoomTab = tab;
+                        renderRooms();
+                    } else {
+                        currentOrderTab = tab;
+                        renderOrdersContent(tab);
+                    }
+                });
+            });
+
+            // Search functionality
+            document.getElementById('room-search').addEventListener('input', function() {
+                renderRooms(this.value.toLowerCase());
+            });
+        }
+
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            }) + ' ' + now.toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            document.getElementById('current-time').textContent = timeString;
+        }
+
+        function renderRooms(searchTerm = '') {
+            let filteredRooms = rooms;
+            
+            // Filter by tab
+            if (currentRoomTab !== 'all') {
+                filteredRooms = filteredRooms.filter(room => room.status === currentRoomTab);
+            }
+            
+            // Filter by search term
+            if (searchTerm) {
+                filteredRooms = filteredRooms.filter(room => 
+                    room.number.toLowerCase().includes(searchTerm) ||
+                    room.guest.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            const roomGrid = document.getElementById('room-grid');
+            roomGrid.innerHTML = filteredRooms.map(room => `
+                <div class="room-card" onclick="selectRoom('${room.number}')">
+                    ${room.hasActiveOrders ? '<div class="order-indicator"></div>' : ''}
+                    <div class="room-number">Room ${room.number}</div>
+                    <div class="room-status status-${room.status}">${getStatusText(room.status)}</div>
+                    <div class="room-orders">
+                        ${room.guest ? `Guest: ${room.guest}` : 'Available'}
+                        ${room.orders > 0 ? `<br>Orders: ${room.orders}` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderOrdersContent(tab) {
+            const content = document.getElementById('orders-content');
+            
+            if (tab === 'recent') {
+                content.innerHTML = orders.map(order => `
+                    <div class="order-summary ${order.type}">
+                        <div class="order-header">
+                            <span class="order-id">Order #${order.id} - Room ${order.room}</span>
+                            <span class="order-time">${formatTime(order.time)}</span>
+                        </div>
+                        <div class="order-details">
+                            ${order.items.join(', ')}<br>
+                            <strong>Total: ₩${order.total.toLocaleString()}</strong>
+                        </div>
+                        <span class="order-status-badge badge-${order.status}">${getOrderStatusText(order.status)}</span>
+                    </div>
+                `).join('');
+            } else {
+                content.innerHTML = serviceRequests.map(request => `
+                    <div class="service-request">
+                        <div class="service-header">
+                            <span class="service-room">Room ${request.room}</span>
+                            <span class="service-time">${formatTime(request.time)}</span>
+                        </div>
+                        <div class="service-description">${request.description}</div>
+                        <div class="service-actions">
+                            ${request.status === 'pending' ? `
+                                <button class="action-btn btn-assign" onclick="assignService(${request.id})">Assign</button>
+                                <button class="action-btn btn-complete" onclick="completeService(${request.id})">Complete</button>
+                            ` : `
+                                <span style="color: #27ae60;">✓ ${request.assignedTo || 'Completed'}</span>
+                            `}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function selectRoom(roomNumber) {
+            const room = rooms.find(r => r.number === roomNumber);
+            if (room) {
+                addNotification(`Selected Room ${roomNumber} - ${room.guest || 'Available'}`, 'info');
+                
+                // Update checkout summary if it's a checkout room
+                if (room.status === 'checkout') {
+                    updateCheckoutSummary(roomNumber);
+                }
+            }
+        }
+
+        function assignService(requestId) {
+            const request = serviceRequests.find(r => r.id === requestId);
+            if (request) {
+                request.status = 'assigned';
+                request.assignedTo = 'Housekeeping Team';
+                renderOrdersContent('services');
+                addNotification(`Service request for Room ${request.room} assigned to housekeeping`, 'success');
+            }
+        }
+
+        function completeService(requestId) {
+            const request = serviceRequests.find(r => r.id === requestId);
+            if (request) {
+                request.status = 'completed';
+                request.assignedTo = 'Completed';
+                renderOrdersContent('services');
+                addNotification(`Service request for Room ${request.room} completed`, 'success');
+                
+                // Update stats
+                const pendingCount = document.getElementById('pending-requests');
+                pendingCount.textContent = parseInt(pendingCount.textContent) - 1;
+            }
+        }
+
+        function updateCheckoutSummary(roomNumber) {
+            const checkoutContent = document.getElementById('checkout-content');
+            
+            // Calculate total for the room
+            const roomOrders = orders.filter(order => order.room === roomNumber);
+            const totalAmount = roomOrders.reduce((sum, order) => sum + order.total, 0);
+            const serviceCharge = Math.floor(totalAmount * 0.1);
+            const finalTotal = totalAmount + serviceCharge;
+            
+            checkoutContent.innerHTML = `
+                <div class="checkout-summary">
+                    <div class="checkout-room">Room ${roomNumber}</div>
+                    ${roomOrders.map(order => `
+                        <div class="bill-item">
+                            <span>Order #${order.id}</span>
+                            <span>₩${order.total.toLocaleString()}</span>
+                        </div>
+                    `).join('')}
+                    <div class="bill-item">
+                        <span>Service Charge (10%)</span>
+                        <span>₩${serviceCharge.toLocaleString()}</span>
+                    </div>
+                    <div class="bill-item">
+                        <span>Total Amount</span>
+                        <span>₩${finalTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addNotification(message, type = 'info') {
+            const notification = {
+                id: Date.now(),
+                message: message,
+                type: type,
+                time: new Date()
+            };
+            
+            notifications.unshift(notification);
+            
+            // Keep only last 10 notifications
+            if (notifications.length > 10) {
+                notifications = notifications.slice(0, 10);
+            }
+            
+            renderNotifications();
+        }
+
+        function renderNotifications() {
+            const panel = document.getElementById('notifications');
+            panel.innerHTML = notifications.map(notif => `
+                <div class="notification-item ${notif.type}">
+                    <div class="notif-time">${formatTime(notif.time)}</div>
+                    <div class="notif-message">${notif.message}</div>
+                </div>
+            `).join('');
+        }
+
+        function addSampleNotifications() {
+            addNotification('New order received from Room 1205', 'urgent');
+            addNotification('Housekeeping completed Room 0815', 'success');
+            addNotification('Guest checked in to Room 1456', 'info');
+            addNotification('Service request from Room 2110', 'urgent');
+        }
+
+        function simulateUpdates() {
+            // Randomly update some data to simulate real-time updates
+            if (Math.random() > 0.7) {
+                const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+                addNotification(`Room ${randomRoom.number} status updated`, 'info');
+            }
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'occupied': 'Occupied',
+                'checkout': 'Checkout',
+                'available': 'Available',
+                'maintenance': 'Maintenance'
+            };
+            return statusMap[status] || status;
+        }
+
+        function getOrderStatusText(status) {
+            const statusMap = {
+                'pending': 'Order Received',
+                'preparing': 'Preparing',
+                'serving': 'On the Way',
+                'completed': 'Delivered'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('ko-KR', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+        }
+    </script>
+</body>
+</html>
